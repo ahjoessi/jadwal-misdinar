@@ -210,7 +210,7 @@ elif menu == "Ubah Jadwal Misdinar":
         
         if st.button("Konfirmasi"):
             # Update the roster
-            roster_df.loc[roster_df["Nama"] == selected_person.split(" - ")[0], "Nama"] = replacement_person.split(" - ")[0]
+            roster_df.loc[roster_df["ID"] == selected_person["ID"]] = df[df['ID'] == replacement_person["ID"]]
             
             # Save back to S3
             csv_buffer = StringIO()
