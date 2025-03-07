@@ -30,23 +30,30 @@ df = load_data()
 
 def delete_old_rosters():
     today = datetime.date.today()
-    
-    # List all files in the directory
-    for file in os.listdir():
-        if file.startswith("misdinar_") and file.endswith(".csv"):
-            try:
-                # Extract date from filename
-                date_str = file.split("_")[-1].replace(".csv", "")  # Extract the date part
-                roster_date = datetime.datetime.strptime(date_str, "%d %B %Y").date()
-                
-                # Delete if date is in the past
-                if roster_date < today:
-                    os.remove(file)
-                    print(f"Deleted old roster: {file}")
-            except Exception as e:
-                print(f"Skipping {file}: {e}")
 
-# Call the function when the app starts
+    # List objects in the "rosters/" folder in S3
+    response = s3.list_objects_v2(Bucket=S3_BUCKET_NAME, Prefix="rosters/")
+    
+    if "Contents" in response:
+        for obj in response["Contents"]:
+            file_key = obj["Key"]  # Full S3 path (e.g., "rosters/misdinar_SabtuSore_8 Maret 2025.csv")
+            file_name = file_key.split("/")[-1]  # Extract filename
+           
+            if file_name.startswith("misdinar_") and file_name.endswith(".csv"):
+                try:
+                    # Extract date from filename
+                    date_str = file_name.split("_")[-1].replace(".csv", "")  # e.g., "8 Maret 2025"
+                    roster_date = datetime.datetime.strptime(date_str, "%d %B %Y").date()
+                    
+                    # Delete if the date is in the past
+                    if roster_date < today:
+                        s3.delete_object(Bucket=S3_BUCKET_NAME, Key=file_key)
+                        print(f"Deleted old roster from S3: {file_key}")
+
+                except Exception as e:
+                    print(f"Skipping {file_name}: {e}")
+
+# Call function at startup to remove outdated roster files
 delete_old_rosters()
 
 # Streamlit App Title
@@ -145,14 +152,26 @@ if menu == "Buat Jadwal Misdinar":
         
         #Update Partisipasi column
         df.loc[df['ID'].isin(full_roster['ID']), 'Partisipasi'] += 1
-        df.to_csv("data.csv", index=False)
-        df = load_data()
 
-        # Save to a CSV file for tracking
-        full_roster.to_csv(f"misdinar_{selected_misa}_{formatted_date}.csv", index=False)
-        
+        #Save updated data.csv back to S3
+        csv_buffer = StringIO()
+        df.to_csv(csv_buffer, index=False)
+        s3.put_object(Bucket=S3_BUCKET_NAME, Key="data.csv", Body=csv_buffer.getvalue())
+
+        # Generate roster filename (e.g., "misdinar_SabtuSore_2025-03-08.csv")
+        roster_filename = f"misdinar_{selected_misa}_{formatted_date}.csv"
+
+        # Convert DataFrame to CSV for S3 upload
+        roster_buffer = StringIO()
+        full_roster.to_csv(roster_buffer, index=False)
+
+        # Upload roster file to S3
+        s3.put_object(Bucket=S3_BUCKET_NAME, Key=f"rosters/{roster_filename}", Body=roster_buffer.getvalue())
+
         # Display formatted text output
         st.code(roster_text, height=200, language='python')
+
+        st.success(f"Jadwal Misdinar berhasil dibuat!")
 
 elif menu == "Ubah Jadwal Misdinar":
     st.header("Ubah Jadwal Misdinar")
