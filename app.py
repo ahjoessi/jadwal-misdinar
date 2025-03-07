@@ -2,8 +2,7 @@ import streamlit as st
 import pandas as pd
 from streamlit_option_menu import option_menu
 import datetime
-import os
-from io import StringIO
+from io import StringIO, BytesIO
 import boto3
 
 AWS_ACCESS_KEY_ID = st.secrets["AWS_ACCESS_KEY_ID"]
@@ -176,25 +175,50 @@ if menu == "Buat Jadwal Misdinar":
 elif menu == "Ubah Jadwal Misdinar":
     st.header("Ubah Jadwal Misdinar")
     
-    # List existing roster files
-    roster_files = [f for f in os.listdir() if f.startswith("misdinar_") and f.endswith(".csv")]
+    # List roster files from S3
+    response = s3.list_objects_v2(Bucket=S3_BUCKET_NAME, Prefix="rosters/")
+    roster_files = [obj["Key"] for obj in response.get("Contents", []) if obj["Key"].endswith(".csv")]
+    
     if roster_files:
-        display_roster_files = {f: f.replace("misdinar_", "").replace(".csv", "").replace("_", " - ") for f in roster_files}
+        # Format file names for display
+        display_roster_files = {f: f.replace("rosters/misdinar_", "").replace(".csv", "").replace("_", " - ") for f in roster_files}
+        
         selected_roster_file = st.selectbox("Pilih Jadwal Tugas Misdinar:", list(display_roster_files.values()))
-        actual_file = [key for key, value in display_roster_files.items() if value == selected_roster_file][0]
-        roster_df = pd.read_csv(actual_file)
+        actual_file_key = [key for key, value in display_roster_files.items() if value == selected_roster_file][0]
+        
+        # Download the selected roster from S3
+        obj = s3.get_object(Bucket=S3_BUCKET_NAME, Key=actual_file_key)
+        roster_df = pd.read_csv(BytesIO(obj["Body"].read()))
+        
         st.write("### Petugas Misdinar")
         st.dataframe(roster_df[["Nama", "Lingkungan", "Peran", "Notes"]], width=1000, hide_index=True)
         
         # Select a person to replace
-        selected_person = st.selectbox("Pilih petugas misdinar yang ingin diganti:", roster_df.apply(lambda row: f"{row['Nama']} - {row['Lingkungan']} - {row['Peran']}", axis=1).tolist())
-        available_replacements = df[df["Peran"].isin(["Misdinar", "Organis"]) & ~df["Nama"].isin(roster_df["Nama"])].sort_values(by=['Peran','Lingkungan', 'Nama'])
-        replacement_person = st.selectbox("Pilih pengganti petugas misdinar:", available_replacements.apply(lambda row: f"{row['Nama']} - {row['Lingkungan']} - {row['Peran']}", axis=1).tolist())
+        selected_person = st.selectbox(
+            "Pilih petugas misdinar yang ingin diganti:",
+            roster_df.apply(lambda row: f"{row['Nama']} - {row['Lingkungan']} - {row['Peran']}", axis=1).tolist()
+        )
+        
+        available_replacements = df[
+            df["Peran"].isin(["Misdinar", "Organis"]) & ~df["Nama"].isin(roster_df["Nama"])
+        ].sort_values(by=['Peran', 'Lingkungan', 'Nama'])
+        
+        replacement_person = st.selectbox(
+            "Pilih pengganti petugas misdinar:",
+            available_replacements.apply(lambda row: f"{row['Nama']} - {row['Lingkungan']} - {row['Peran']}", axis=1).tolist()
+        )
         
         if st.button("Konfirmasi"):
+            # Update the roster
             roster_df.loc[roster_df["Nama"] == selected_person.split(" - ")[0], "Nama"] = replacement_person.split(" - ")[0]
-            roster_df.to_csv(actual_file, index=False)
+            
+            # Save back to S3
+            csv_buffer = StringIO()
+            roster_df.to_csv(csv_buffer, index=False)
+            s3.put_object(Bucket=S3_BUCKET_NAME, Key=actual_file_key, Body=csv_buffer.getvalue())
+            
             st.success("Perubahan Jadwal Petugas Misdinar Berhasil!")
+    
     else:
         st.write("Belum ada jadwal tugas misdinar yang dibuat.")
 
