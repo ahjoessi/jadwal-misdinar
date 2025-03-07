@@ -253,7 +253,8 @@ elif menu == "Update Data Misdinar":
                 new_data[col] = st.text_input(col, "")
         if st.button("Tambah Data Petugas"):
             df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
-            df = df.sort_values(by=['Peran','Lingkungan', 'Nama']).drop(columns='ID')
+            df = df.drop(columns='ID')
+            df = df.sort_values(by=['Peran','Lingkungan', 'Nama'])
             df = df.reset_index().rename(columns={'index':'ID'})
 
             csv_buffer = StringIO()
@@ -267,7 +268,8 @@ elif menu == "Update Data Misdinar":
         selected_remove = st.selectbox("Pilih petugas misdinar yang ingin dihapus", df.apply(lambda row: f"{row['ID']}. {row['Nama']} - {row['Lingkungan']} - {row['Peran']}", axis=1).tolist())
         if st.button("Hapus Data Petugas"):
             df = df[df["ID"] != selected_remove.split(". ")[0]]
-            df = df.sort_values(by=['Peran','Lingkungan', 'Nama']).drop(columns='ID')
+            df = df.drop(columns='ID')
+            df = df.sort_values(by=['Peran','Lingkungan', 'Nama'])
             df = df.reset_index().rename(columns={'index':'ID'})
 
             csv_buffer = StringIO()
