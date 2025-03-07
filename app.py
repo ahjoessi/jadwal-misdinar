@@ -246,9 +246,9 @@ elif menu == "Update Data Misdinar":
             elif col == "Partisipasi":
                 new_data[col] = 0
             elif col == "Peran":
-                col = st.selectbox("Pilih Peran Petugas:", list(peran_options))
+                new_data[col] = st.selectbox("Pilih Peran Petugas:", list(peran_options))
             elif col == "Lingkungan":
-                col = st.selectbox("Pilih Asal Lingkungan Petugas:", list(lingkungan_options))
+                new_data[col] = st.selectbox("Pilih Asal Lingkungan Petugas:", list(lingkungan_options))
             else:
                 new_data[col] = st.text_input(col, "")
         if st.button("Tambah Data Petugas"):
@@ -289,5 +289,5 @@ elif menu == "Update Data Misdinar":
                 df.to_csv(csv_buffer, index=False)
                 s3.put_object(Bucket=S3_BUCKET_NAME, Key=DATA_FILE, Body=csv_buffer.getvalue())
                 st.rerun()
-                
+
                 st.success("Data berhasil diperbarui!")
