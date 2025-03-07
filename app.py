@@ -21,7 +21,7 @@ s3 = boto3.client(
 # Load Data from Local File
 def load_data():
     obj = s3.get_object(Bucket=S3_BUCKET_NAME, Key=DATA_FILE)
-    df = pd.read_csv(StringIO(obj["Body"].read().decode("utf-8")), dtype='str')
+    df = pd.read_csv(StringIO(obj["Body"].read().decode("utf-8")), dtype={'ID':'str','Partisipasi':'int'})
 
     return df
 
@@ -188,7 +188,7 @@ elif menu == "Ubah Jadwal Misdinar":
         
         # Download the selected roster from S3
         obj = s3.get_object(Bucket=S3_BUCKET_NAME, Key=actual_file_key)
-        roster_df = pd.read_csv(BytesIO(obj["Body"].read()), dtype='str')
+        roster_df = pd.read_csv(BytesIO(obj["Body"].read()), dtype={'ID':'str','Partisipasi':'int'})
         
         st.write("### Petugas Misdinar")
         st.dataframe(roster_df[["ID","Nama", "Lingkungan", "Peran", "Notes"]], width=1000, hide_index=True)
