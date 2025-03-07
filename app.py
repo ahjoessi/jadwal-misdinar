@@ -118,12 +118,12 @@ if menu == "Buat Jadwal Misdinar":
         remaining_spots = required_count - len(priority_1)
         special_count = len(priority_1[priority_1['Notes'].notnull()])
         if special_count >= special_needed:
-            filler = df_misdinar[(~df_misdinar["ID"].isin(priority_1['ID'])) & (~df_misdinar['Notes'].str.contains("Lambat|Baru", na=False))]
+            filler = df_misdinar[(~df_misdinar["ID"].isin(priority_1['ID'])) & (df_misdinar['Notes'].isnull())]
             filler = filler.sort_values(by='Partisipasi').head(remaining_spots)
         else:
             special_needed = special_needed - special_count
-            special = df_misdinar[(~df_misdinar["ID"].isin(priority_1['ID'])) & (df_misdinar['Notes'].str.contains("Lambat|Baru", na=False))].head(special_needed)
-            filler = df_misdinar[(~df_misdinar["ID"].isin(priority_1['ID'])) & (~df_misdinar['ID'].isin(special['ID']))  & (~df_misdinar['Notes'].str.contains("Lambat|Baru", na=False))].head(remaining_spots - special_needed)
+            special = df_misdinar[(~df_misdinar["ID"].isin(priority_1['ID'])) & (~df_misdinar['Notes'].isnull())].head(special_needed)
+            filler = df_misdinar[(~df_misdinar["ID"].isin(priority_1['ID'])) & (~df_misdinar['ID'].isin(special['ID']))  & (df_misdinar['Notes'].isnull())].head(remaining_spots - special_needed)
             filler = pd.concat([filler, special])
 
         selected_roster = pd.concat([priority_1, filler])
@@ -235,6 +235,9 @@ elif menu == "Ubah Jadwal Misdinar":
 elif menu == "Update Data Misdinar":
     st.header("Update Data Misdinar")
 
+    lingkungan_options = df["Lingkungan"].unique().tolist()
+    peran_options = df["Peran"].unique().tolist()
+
     with st.expander('Tambah Data Misdinar'):
         new_data = {}
         for col in df.columns:
@@ -242,6 +245,10 @@ elif menu == "Update Data Misdinar":
                 new_data[col] = '0'
             elif col == "Partisipasi":
                 new_data[col] = 0
+            elif col == "Peran":
+                col = st.selectbox("Pilih Peran Petugas:", list(peran_options))
+            elif col == "Lingkungan":
+                col = st.selectbox("Pilih Asal Lingkungan Petugas:", list(lingkungan_options))
             else:
                 new_data[col] = st.text_input(col, "")
         if st.button("Tambah Data Petugas"):
