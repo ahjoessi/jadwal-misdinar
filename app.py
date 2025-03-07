@@ -191,12 +191,12 @@ elif menu == "Ubah Jadwal Misdinar":
         roster_df = pd.read_csv(BytesIO(obj["Body"].read()))
         
         st.write("### Petugas Misdinar")
-        st.dataframe(roster_df[["Nama", "Lingkungan", "Peran", "Notes"]], width=1000, hide_index=True)
+        st.dataframe(roster_df[["ID","Nama", "Lingkungan", "Peran", "Notes"]], width=1000, hide_index=True)
         
         # Select a person to replace
         selected_person = st.selectbox(
             "Pilih petugas misdinar yang ingin diganti:",
-            roster_df.apply(lambda row: f"{row['Nama']} - {row['Lingkungan']} - {row['Peran']}", axis=1).tolist()
+            roster_df.apply(lambda row: f"{row['ID']}. {row['Nama']} - {row['Lingkungan']} - {row['Peran']}", axis=1).tolist()
         )
         
         available_replacements = df[
@@ -205,12 +205,12 @@ elif menu == "Ubah Jadwal Misdinar":
         
         replacement_person = st.selectbox(
             "Pilih pengganti petugas misdinar:",
-            available_replacements.apply(lambda row: f"{row['Nama']} - {row['Lingkungan']} - {row['Peran']}", axis=1).tolist()
+            available_replacements.apply(lambda row: f"{row['ID']}. {row['Nama']} - {row['Lingkungan']} - {row['Peran']}", axis=1).tolist()
         )
         
         if st.button("Konfirmasi"):
             # Update the roster
-            roster_df.loc[roster_df["ID"] == selected_person["ID"]] = df[df['ID'] == replacement_person["ID"]]
+            roster_df.loc[roster_df["ID"] == selected_person.split(". ")[0]] = [df.loc[df['ID']==replacement_person.split(". ")[0]]]
             
             # Save back to S3
             csv_buffer = StringIO()
