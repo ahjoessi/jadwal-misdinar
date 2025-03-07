@@ -1,0 +1,220 @@
+import streamlit as st
+import pandas as pd
+from streamlit_option_menu import option_menu
+import datetime
+import os
+from io import StringIO
+import boto3
+
+AWS_ACCESS_KEY_ID = st.secrets["AWS_ACCESS_KEY_ID"]
+AWS_SECRET_ACCESS_KEY = st.secrets["AWS_SECRET_ACCESS_KEY"]
+S3_BUCKET_NAME = st.secrets["S3_BUCKET_NAME"]
+S3_REGION = st.secrets["S3_REGION"]
+
+s3 = boto3.client(
+    "s3",
+    aws_access_key_id=AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    region_name=S3_REGION
+)
+
+# Load Data from Local File
+def load_data():
+    obj = s3.get_object(Bucket=S3_BUCKET_NAME, Key=DATA_FILE)
+    df = pd.read_csv(StringIO(obj["Body"].read().decode("utf-8")))
+
+    return df
+
+df = load_data()
+
+def delete_old_rosters():
+    today = datetime.date.today()
+    
+    # List all files in the directory
+    for file in os.listdir():
+        if file.startswith("misdinar_") and file.endswith(".csv"):
+            try:
+                # Extract date from filename
+                date_str = file.split("_")[-1].replace(".csv", "")  # Extract the date part
+                roster_date = datetime.datetime.strptime(date_str, "%d %B %Y").date()
+                
+                # Delete if date is in the past
+                if roster_date < today:
+                    os.remove(file)
+                    print(f"Deleted old roster: {file}")
+            except Exception as e:
+                print(f"Skipping {file}: {e}")
+
+# Call the function when the app starts
+delete_old_rosters()
+
+# Streamlit App Title
+st.title("Manajemen Jadwal Misdinar Santo Marinus Karawang")
+
+# Main Menu
+with st.sidebar:
+    menu = option_menu(
+        menu_title=None,
+        options= ["Buat Jadwal Misdinar", "Ubah Jadwal Misdinar", "Update Data Misdinar"],
+        icons= ["calendar-plus", "journal-bookmark", "database-fill-gear"],
+        menu_icon="cast",
+        default_index=0
+    )
+
+if menu == "Buat Jadwal Misdinar":
+    st.header("Buat Jadwal Misdinar")
+    
+    misa_options = {
+        "Jumat Pertama": 4,
+        "Sabtu Sore": 6,
+        "Minggu Pagi Pertama": 11,
+        "Minggu Sore Pertama": 11,
+        "Minggu Pagi Biasa": 8,
+        "Minggu Sore Biasa": 8,
+        "Jalan Salib": 3,
+        "Hari Raya": 11
+    }
+    selected_misa = st.selectbox("Pilih Kategori Misa:", list(misa_options.keys()))
+    required_count = misa_options[selected_misa]
+
+    # User input for roster date
+    roster_date = st.date_input("Pilih Tanggal Misa:", format='DD/MM/YYYY')
+    formatted_date = roster_date.strftime("%A, %d %B %Y")
+    
+    lingkungan_options = df["Lingkungan"].unique().tolist()
+    selected_lingkungan = st.selectbox("Pilih Petugas Koor:", lingkungan_options)
+    
+    st.write(f"Kategori Misa: {selected_misa}, butuh {required_count} petugas Misdinar")
+    st.write(f"Tanggal Misa: {formatted_date}")
+    st.write(f"Petugas Koor: {selected_lingkungan}")
+    
+    # Filter altar servers based on the selection criteria
+    df_misdinar = df[df["Peran"] == "Misdinar"].copy()
+    df_misdinar["Partisipasi"] = df_misdinar["Partisipasi"].fillna(0)
+    
+    # Priority 1: Same Lingkungan as choir duty
+    priority_1 = df_misdinar[df_misdinar["Lingkungan"] == selected_lingkungan]
+    
+    # Priority 2: Least participation
+    priority_1 = priority_1.sort_values(by="Partisipasi").head(required_count)
+    priority_1_non = priority_1[priority_1['Notes'].isnull()]
+    priority_1_sps = priority_1[priority_1['Notes'].notnull()]
+    special_needed = max(1, required_count // 4)
+
+    if len(priority_1_non) < required_count:
+        priority_1_sps = priority_1_sps.head(special_needed)
+        priority_1 = pd.concat([priority_1_non, priority_1_sps], ignore_index=True)
+    else:
+        priority_1 = priority_1_non
+    
+    if len(priority_1) < required_count:
+        remaining_spots = required_count - len(priority_1)
+        special_count = len(priority_1[priority_1['Notes'].notnull()])
+        if special_count >= special_needed:
+            filler = df_misdinar[(~df_misdinar["ID"].isin(priority_1['ID'])) & (~df_misdinar['Notes'].str.contains("Lambat|Baru", na=False))]
+            filler = filler.sort_values(by='Partisipasi').head(remaining_spots)
+        else:
+            special_needed = special_needed - special_count
+            special = df_misdinar[(~df_misdinar["ID"].isin(priority_1['ID'])) & (df_misdinar['Notes'].str.contains("Lambat|Baru", na=False))].head(special_needed)
+            filler = df_misdinar[(~df_misdinar["ID"].isin(priority_1['ID'])) & (~df_misdinar['ID'].isin(special['ID']))  & (~df_misdinar['Notes'].str.contains("Lambat|Baru", na=False))].head(remaining_spots - special_needed)
+            filler = pd.concat([filler, special])
+
+        selected_roster = pd.concat([priority_1, filler])
+    else:
+        selected_roster = priority_1
+    
+    # Select one Organist
+    df_organist = df[df["Peran"] == "Organis"].copy()
+    df_organist["Partisipasi"] = df_organist["Partisipasi"].fillna(0)
+    organist_priority = df_organist[df_organist["Lingkungan"] == selected_lingkungan].sort_values(by="Partisipasi")
+    if organist_priority.empty:
+        organist_priority = df_organist.sort_values(by="Partisipasi")
+    selected_organist = organist_priority.head(1)
+    
+    # Combine roster
+    full_roster = pd.concat([selected_roster, selected_organist])
+    
+    st.write("### Petugas Misdinar:")
+    st.dataframe(full_roster[["Nama", "Lingkungan", "Peran", "Notes"]], width=1000, hide_index=True)
+
+    # Confirmation Button
+    if st.button("Konfirmasi"):
+        roster_text = f"Jadwal Misdinar - {selected_misa}\n{formatted_date}\n\nNama - Lingkungan\n"
+        roster_text += "\n".join([f"{row['Nama']} - {row['Lingkungan']}" for _, row in full_roster.iterrows()])
+        
+        #Update Partisipasi column
+        df.loc[df['ID'].isin(full_roster['ID']), 'Partisipasi'] += 1
+        df.to_csv("data.csv", index=False)
+        df = load_data()
+
+        # Save to a CSV file for tracking
+        full_roster.to_csv(f"misdinar_{selected_misa}_{formatted_date}.csv", index=False)
+        
+        # Display formatted text output
+        st.code(roster_text, height=200, language='python')
+
+elif menu == "Ubah Jadwal Misdinar":
+    st.header("Ubah Jadwal Misdinar")
+    
+    # List existing roster files
+    roster_files = [f for f in os.listdir() if f.startswith("misdinar_") and f.endswith(".csv")]
+    if roster_files:
+        display_roster_files = {f: f.replace("misdinar_", "").replace(".csv", "").replace("_", " - ") for f in roster_files}
+        selected_roster_file = st.selectbox("Pilih Jadwal Tugas Misdinar:", list(display_roster_files.values()))
+        actual_file = [key for key, value in display_roster_files.items() if value == selected_roster_file][0]
+        roster_df = pd.read_csv(actual_file)
+        st.write("### Petugas Misdinar")
+        st.dataframe(roster_df[["Nama", "Lingkungan", "Peran", "Notes"]], width=1000, hide_index=True)
+        
+        # Select a person to replace
+        selected_person = st.selectbox("Pilih petugas misdinar yang ingin diganti:", roster_df.apply(lambda row: f"{row['Nama']} - {row['Lingkungan']} - {row['Peran']}", axis=1).tolist())
+        available_replacements = df[df["Peran"].isin(["Misdinar", "Organis"]) & ~df["Nama"].isin(roster_df["Nama"])].sort_values(by=['Peran','Lingkungan', 'Nama'])
+        replacement_person = st.selectbox("Pilih pengganti petugas misdinar:", available_replacements.apply(lambda row: f"{row['Nama']} - {row['Lingkungan']} - {row['Peran']}", axis=1).tolist())
+        
+        if st.button("Konfirmasi"):
+            roster_df.loc[roster_df["Nama"] == selected_person.split(" - ")[0], "Nama"] = replacement_person.split(" - ")[0]
+            roster_df.to_csv(actual_file, index=False)
+            st.success("Perubahan Jadwal Petugas Misdinar Berhasil!")
+    else:
+        st.write("Belum ada jadwal tugas misdinar yang dibuat.")
+
+elif menu == "Update Data Misdinar":
+    st.header("Update Data Misdinar")
+
+    with st.expander('Tambah Data Misdinar'):
+        new_data = {}
+        for col in df.columns:
+            if col == "ID":
+                new_data[col] = 0
+            elif col == "Partisipasi":
+                new_data[col] = 0
+            else:
+                new_data[col] = st.text_input(col, "")
+        if st.button("Tambah Data Petugas"):
+            df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
+            df = df.sort_values(by=['Peran','Lingkungan', 'Nama']).drop(columns='ID')
+            df = df.reset_index().rename(columns={'index':'ID'})
+            df['ID'] +=1
+            df.to_csv("data.csv", index=False)
+            st.success("Data petugas misdinar berhasil ditambahkan!")
+    
+    with st.expander('Hapus Data Misdinar'):
+        st.dataframe(df, width=1000)
+        selected_remove = st.selectbox("Pilih petugas misdinar yang ingin dihapus", df.apply(lambda row: f"{row['Nama']} - {row['Lingkungan']} - {row['Peran']}", axis=1).tolist())
+        if st.button("Hapus Data Petugas"):
+            df = df[df["Nama"] != selected_remove]
+            df = df.sort_values(by=['Peran','Lingkungan', 'Nama']).drop(columns='ID')
+            df = df.reset_index().rename(columns={'index':'ID'})
+            df['ID'] +=1
+            df.to_csv("data.csv", index=False)
+            st.success("Data petugas misdinar berhasil dihapus!")
+    
+    with st.expander('Upload Data Baru'):
+        uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
+
+        if uploaded_file is not None:
+            df = pd.read_csv(uploaded_file)
+            st.warning('Pastikan Data yang diupload sudah benar!')
+            if st.button('Konfirmasi'):
+                df.to_csv("data.csv", index=False)
+                st.success("Data berhasil diperbarui!")
