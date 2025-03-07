@@ -259,7 +259,6 @@ elif menu == "Update Data Misdinar":
             csv_buffer = StringIO()
             df.to_csv(csv_buffer, index=False)
             s3.put_object(Bucket=S3_BUCKET_NAME, Key=DATA_FILE, Body=csv_buffer.getvalue())
-            st.rerun()
 
             st.success("Data petugas misdinar berhasil ditambahkan!")
     
@@ -274,7 +273,6 @@ elif menu == "Update Data Misdinar":
             csv_buffer = StringIO()
             df.to_csv(csv_buffer, index=False)
             s3.put_object(Bucket=S3_BUCKET_NAME, Key=DATA_FILE, Body=csv_buffer.getvalue())
-            st.rerun()
 
             st.success("Data petugas misdinar berhasil dihapus!")
     
@@ -288,6 +286,5 @@ elif menu == "Update Data Misdinar":
                 csv_buffer = StringIO()
                 df.to_csv(csv_buffer, index=False)
                 s3.put_object(Bucket=S3_BUCKET_NAME, Key=DATA_FILE, Body=csv_buffer.getvalue())
-                st.rerun()
 
                 st.success("Data berhasil diperbarui!")
