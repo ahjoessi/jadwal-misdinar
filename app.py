@@ -21,7 +21,7 @@ s3 = boto3.client(
 # Load Data from Local File
 def load_data():
     obj = s3.get_object(Bucket=S3_BUCKET_NAME, Key=DATA_FILE)
-    df = pd.read_csv(StringIO(obj["Body"].read().decode("utf-8")))
+    df = pd.read_csv(StringIO(obj["Body"].read().decode("utf-8")), dtype='str')
 
     return df
 
@@ -188,7 +188,7 @@ elif menu == "Ubah Jadwal Misdinar":
         
         # Download the selected roster from S3
         obj = s3.get_object(Bucket=S3_BUCKET_NAME, Key=actual_file_key)
-        roster_df = pd.read_csv(BytesIO(obj["Body"].read()))
+        roster_df = pd.read_csv(BytesIO(obj["Body"].read()), dtype='str')
         
         st.write("### Petugas Misdinar")
         st.dataframe(roster_df[["ID","Nama", "Lingkungan", "Peran", "Notes"]], width=1000, hide_index=True)
@@ -238,7 +238,6 @@ elif menu == "Update Data Misdinar":
             df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
             df = df.sort_values(by=['Peran','Lingkungan', 'Nama']).drop(columns='ID')
             df = df.reset_index().rename(columns={'index':'ID'})
-            df['ID'] +=1
             df.to_csv("data.csv", index=False)
             st.success("Data petugas misdinar berhasil ditambahkan!")
     
@@ -249,7 +248,6 @@ elif menu == "Update Data Misdinar":
             df = df[df["Nama"] != selected_remove]
             df = df.sort_values(by=['Peran','Lingkungan', 'Nama']).drop(columns='ID')
             df = df.reset_index().rename(columns={'index':'ID'})
-            df['ID'] +=1
             df.to_csv("data.csv", index=False)
             st.success("Data petugas misdinar berhasil dihapus!")
     
