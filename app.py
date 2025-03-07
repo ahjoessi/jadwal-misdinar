@@ -10,6 +10,7 @@ AWS_ACCESS_KEY_ID = st.secrets["AWS_ACCESS_KEY_ID"]
 AWS_SECRET_ACCESS_KEY = st.secrets["AWS_SECRET_ACCESS_KEY"]
 S3_BUCKET_NAME = st.secrets["S3_BUCKET_NAME"]
 S3_REGION = st.secrets["S3_REGION"]
+DATA_FILE = st.secrets["DATA_FILE"]
 
 s3 = boto3.client(
     "s3",
