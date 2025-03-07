@@ -210,7 +210,7 @@ elif menu == "Ubah Jadwal Misdinar":
         
         if st.button("Konfirmasi"):
             # Update the roster
-            roster_df.loc[roster_df["ID"] == selected_person.split(". ")[0]] = df.loc[df['ID']==replacement_person.split(". ")[0]]
+            roster_df = pd.concat([roster_df, df.loc[df['ID']==replacement_person.split(". ")[0]]], ignore_index=True).drop(roster_df.loc[roster_df["ID"] == selected_person.split(". ")[0]].index)
             
             # Save back to S3
             csv_buffer = StringIO()
