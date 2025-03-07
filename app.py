@@ -267,7 +267,7 @@ elif menu == "Update Data Misdinar":
         st.dataframe(df, width=1000)
         selected_remove = st.selectbox("Pilih petugas misdinar yang ingin dihapus", df.apply(lambda row: f"{row['ID']}. {row['Nama']} - {row['Lingkungan']} - {row['Peran']}", axis=1).tolist())
         if st.button("Hapus Data Petugas"):
-            df = df[df["ID"] != selected_remove.split(" - ")[0]]
+            df = df[df["ID"] != selected_remove.split(". ")[0]]
             df = df.sort_values(by=['Peran','Lingkungan', 'Nama']).drop(columns='ID')
             df = df.reset_index().rename(columns={'index':'ID'})
 
