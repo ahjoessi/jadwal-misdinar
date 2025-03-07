@@ -254,7 +254,7 @@ elif menu == "Update Data Misdinar":
         if st.button("Tambah Data Petugas"):
             df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
             df = df.drop(columns='ID')
-            df = df.sort_values(by=['Peran','Lingkungan', 'Nama'])
+            df = df.sort_values(by=['Nama', 'Lingkungan', 'Peran'])
             df = df.reset_index().rename(columns={'index':'ID'})
 
             csv_buffer = StringIO()
