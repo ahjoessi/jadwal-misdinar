@@ -213,9 +213,18 @@ elif menu == "Ubah Jadwal Misdinar":
             roster_df = pd.concat([roster_df, df.loc[df['ID']==replacement_person.split(". ")[0]]], ignore_index=True).drop(roster_df.loc[roster_df["ID"] == selected_person.split(". ")[0]].index)
             
             # Save back to S3
+            roster_buffer = StringIO()
+            roster_df.to_csv(roster_buffer, index=False)
+            s3.put_object(Bucket=S3_BUCKET_NAME, Key=actual_file_key, Body=roster_buffer.getvalue())
+
+            # Update partisipasi petugas
+            df.loc[df['ID']==replacement_person.split(". ")[0], 'Partisipasi'] +=1
+            df.loc[df["ID"] == selected_person.split(". ")[0], 'Partisipasi'] -=1
+
+            # Save updated data to S3
             csv_buffer = StringIO()
-            roster_df.to_csv(csv_buffer, index=False)
-            s3.put_object(Bucket=S3_BUCKET_NAME, Key=actual_file_key, Body=csv_buffer.getvalue())
+            df.to_csv(csv_buffer, index=False)
+            s3.put_object(Bucket=S3_BUCKET_NAME, Key=DATA_FILE, Body=csv_buffer.getvalue())
             
             st.success("Perubahan Jadwal Petugas Misdinar Berhasil!")
     
