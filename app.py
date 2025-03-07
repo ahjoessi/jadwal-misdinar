@@ -225,6 +225,7 @@ elif menu == "Ubah Jadwal Misdinar":
             csv_buffer = StringIO()
             df.to_csv(csv_buffer, index=False)
             s3.put_object(Bucket=S3_BUCKET_NAME, Key=DATA_FILE, Body=csv_buffer.getvalue())
+            st.rerun()
             
             st.success("Perubahan Jadwal Petugas Misdinar Berhasil!")
     
@@ -238,7 +239,7 @@ elif menu == "Update Data Misdinar":
         new_data = {}
         for col in df.columns:
             if col == "ID":
-                new_data[col] = 0
+                new_data[col] = '0'
             elif col == "Partisipasi":
                 new_data[col] = 0
             else:
@@ -247,17 +248,25 @@ elif menu == "Update Data Misdinar":
             df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
             df = df.sort_values(by=['Peran','Lingkungan', 'Nama']).drop(columns='ID')
             df = df.reset_index().rename(columns={'index':'ID'})
-            df.to_csv("data.csv", index=False)
+
+            csv_buffer = StringIO()
+            df.to_csv(csv_buffer, index=False)
+            s3.put_object(Bucket=S3_BUCKET_NAME, Key=DATA_FILE, Body=csv_buffer.getvalue())
+
             st.success("Data petugas misdinar berhasil ditambahkan!")
     
     with st.expander('Hapus Data Misdinar'):
         st.dataframe(df, width=1000)
-        selected_remove = st.selectbox("Pilih petugas misdinar yang ingin dihapus", df.apply(lambda row: f"{row['Nama']} - {row['Lingkungan']} - {row['Peran']}", axis=1).tolist())
+        selected_remove = st.selectbox("Pilih petugas misdinar yang ingin dihapus", df.apply(lambda row: f"{row['ID']}. {row['Nama']} - {row['Lingkungan']} - {row['Peran']}", axis=1).tolist())
         if st.button("Hapus Data Petugas"):
-            df = df[df["Nama"] != selected_remove]
+            df = df[df["ID"] != selected_remove.split(" - ")[0]]
             df = df.sort_values(by=['Peran','Lingkungan', 'Nama']).drop(columns='ID')
             df = df.reset_index().rename(columns={'index':'ID'})
-            df.to_csv("data.csv", index=False)
+
+            csv_buffer = StringIO()
+            df.to_csv(csv_buffer, index=False)
+            s3.put_object(Bucket=S3_BUCKET_NAME, Key=DATA_FILE, Body=csv_buffer.getvalue())
+            
             st.success("Data petugas misdinar berhasil dihapus!")
     
     with st.expander('Upload Data Baru'):
@@ -267,5 +276,7 @@ elif menu == "Update Data Misdinar":
             df = pd.read_csv(uploaded_file)
             st.warning('Pastikan Data yang diupload sudah benar!')
             if st.button('Konfirmasi'):
-                df.to_csv("data.csv", index=False)
+                csv_buffer = StringIO()
+                df.to_csv(csv_buffer, index=False)
+                s3.put_object(Bucket=S3_BUCKET_NAME, Key=DATA_FILE, Body=csv_buffer.getvalue())
                 st.success("Data berhasil diperbarui!")
