@@ -89,6 +89,7 @@ if menu == "Buat Jadwal Misdinar":
     formatted_date = roster_date.strftime("%A, %d %B %Y")
     
     lingkungan_options = df["Lingkungan"].unique().tolist()
+    lingkungan_options.append('Lainnya')
     selected_lingkungan = st.selectbox("Pilih Petugas Koor:", lingkungan_options)
     
     st.write(f"Kategori Misa: {selected_misa}, butuh {required_count} petugas Misdinar")
@@ -100,7 +101,10 @@ if menu == "Buat Jadwal Misdinar":
     df_misdinar["Partisipasi"] = df_misdinar["Partisipasi"].fillna(0)
     
     # Priority 1: Same Lingkungan as choir duty
-    priority_1 = df_misdinar[df_misdinar["Lingkungan"] == selected_lingkungan]
+    if selected_lingkungan != 'Lainnya':
+        priority_1 = df_misdinar[df_misdinar["Lingkungan"] == selected_lingkungan]
+    else:
+        priority_1 = df_misdinar
     
     # Priority 2: Least participation
     priority_1 = priority_1.sort_values(by="Partisipasi").head(required_count)
