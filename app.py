@@ -42,7 +42,7 @@ def delete_old_rosters():
                 try:
                     # Extract date from filename
                     date_str = file_name.split("_")[-1].replace(".csv", "")  # e.g., "8 Maret 2025"
-                    roster_date = datetime.datetime.strptime(date_str, "%d %B %Y").date()
+                    roster_date = datetime.datetime.strptime(date_str, "%A, %d %B %Y").date()
                     
                     # Delete if the date is in the past
                     if roster_date < today:
