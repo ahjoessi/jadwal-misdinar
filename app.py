@@ -154,7 +154,7 @@ if menu == "Buat Jadwal Misdinar":
     st.dataframe(full_roster[["Nama", "Lingkungan", "Peran", "Notes"]], width=1000, hide_index=True)
 
     # Confirmation Button
-    if st.button("Konfirmasi"):
+    if st.button("Konfirmasi", type='primary'):
         roster_text = f"Jadwal Misdinar - {selected_misa}\n{formatted_date}\n\nNama - Lingkungan\n"
         roster_text += "\n".join([f"{row['Nama']} - {row['Lingkungan']}" for _, row in full_roster.iterrows()])
         
@@ -217,7 +217,7 @@ elif menu == "Ubah Jadwal Misdinar":
             available_replacements.apply(lambda row: f"{row['ID']}. {row['Nama']} - {row['Lingkungan']} - {row['Peran']}", axis=1).tolist()
         )
         
-        if st.button("Konfirmasi"):
+        if st.button("Konfirmasi", type='primary'):
             # Update the roster
             roster_df = pd.concat([roster_df, df.loc[df['ID']==replacement_person.split(". ")[0]]], ignore_index=True).drop(roster_df.loc[roster_df["ID"] == selected_person.split(". ")[0]].index)
             
@@ -260,7 +260,7 @@ elif menu == "Update Data Misdinar":
                 new_data[col] = st.selectbox("Pilih Asal Lingkungan Petugas:", list(lingkungan_options))
             else:
                 new_data[col] = st.text_input(col, "")
-        if st.button("Tambah Data Petugas"):
+        if st.button("Tambah Data Petugas",type='primary'):
             df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
             df = df.drop(columns='ID')
             df = df.sort_values(by=['Lingkungan', 'Nama', 'Peran'])
@@ -275,7 +275,7 @@ elif menu == "Update Data Misdinar":
     with st.expander('Hapus Data Misdinar'):
         st.dataframe(df, width=1000)
         selected_remove = st.selectbox("Pilih petugas misdinar yang ingin dihapus", df.apply(lambda row: f"{row['ID']}. {row['Nama']} - {row['Lingkungan']} - {row['Peran']}", axis=1).tolist())
-        if st.button("Hapus Data Petugas"):
+        if st.button("Hapus Data Petugas", type='primary'):
             df = df[df["ID"] != selected_remove.split(". ")[0]]
             df = df.drop(columns='ID')
             df = df.sort_values(by=['Peran','Lingkungan', 'Nama'])
@@ -293,7 +293,7 @@ elif menu == "Update Data Misdinar":
         if uploaded_file is not None:
             df = pd.read_csv(uploaded_file)
             st.warning('Pastikan Data yang diupload sudah benar!')
-            if st.button('Konfirmasi'):
+            if st.button('Konfirmasi',type='primary'):
                 csv_buffer = StringIO()
                 df.to_csv(csv_buffer, index=False)
                 s3.put_object(Bucket=S3_BUCKET_NAME, Key=DATA_FILE, Body=csv_buffer.getvalue())
