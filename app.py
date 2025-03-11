@@ -11,6 +11,11 @@ S3_BUCKET_NAME = st.secrets["S3_BUCKET_NAME"]
 S3_REGION = st.secrets["S3_REGION"]
 DATA_FILE = st.secrets["DATA_FILE"]
 
+st.set_page_config(
+    page_title='Manajemen Misdinar Gereja Santo Marinus',
+    page_icon=":church:"
+)
+
 s3 = boto3.client(
     "s3",
     aws_access_key_id=AWS_ACCESS_KEY_ID,
