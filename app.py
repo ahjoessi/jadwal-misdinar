@@ -32,6 +32,14 @@ def load_data():
 
 df = load_data()
 
+@st.cache_data
+def load_schedule():
+    # List roster files from S3
+    response = s3.list_objects_v2(Bucket=S3_BUCKET_NAME, Prefix="rosters/")
+    roster_files = [obj["Key"] for obj in response.get("Contents", []) if obj["Key"].endswith(".csv")]
+    return roster_files
+
+
 def delete_old_rosters():
     today = datetime.date.today()
 
@@ -184,9 +192,7 @@ if menu == "Buat Jadwal Misdinar":
 elif menu == "Ubah Jadwal Misdinar":
     st.header("Ubah Jadwal Misdinar")
     
-    # List roster files from S3
-    response = s3.list_objects_v2(Bucket=S3_BUCKET_NAME, Prefix="rosters/")
-    roster_files = [obj["Key"] for obj in response.get("Contents", []) if obj["Key"].endswith(".csv")]
+    roster_files = load_schedule()
     
     if roster_files:
         # Format file names for display
@@ -216,8 +222,27 @@ elif menu == "Ubah Jadwal Misdinar":
             "Pilih pengganti petugas misdinar:",
             available_replacements.apply(lambda row: f"{row['ID']}. {row['Nama']} - {row['Lingkungan']} - {row['Peran']}", axis=1).tolist()
         )
+        col1, col2, _, _ = st.columns([1,1,1,2])
         
-        if st.button("Konfirmasi", type='primary'):
+        conf = False
+        cetak = False
+
+        with col1:
+            conf = st.button("Konfirmasi", type='primary')
+        with col2:
+            cetak = st.button("Cetak Jadwal", type='secondary')
+
+
+        if cetak:
+            selected_misa = selected_roster_file.split(" - ")[0]
+            formatted_date = selected_roster_file.split(" - ")[1]
+
+            roster_text = f"Jadwal Misdinar - {selected_misa}\n{formatted_date}\n\nNama - Lingkungan\n"
+            roster_text += "\n".join([f"{row['Nama']} - {row['Lingkungan']}" for _, row in roster_df.iterrows()])
+
+            st.code(roster_text, height=200, language='python')
+
+        if conf:
             # Update the roster
             roster_df = pd.concat([roster_df, df.loc[df['ID']==replacement_person.split(". ")[0]]], ignore_index=True).drop(roster_df.loc[roster_df["ID"] == selected_person.split(". ")[0]].index)
             
@@ -234,12 +259,11 @@ elif menu == "Ubah Jadwal Misdinar":
             csv_buffer = StringIO()
             df.to_csv(csv_buffer, index=False)
             s3.put_object(Bucket=S3_BUCKET_NAME, Key=DATA_FILE, Body=csv_buffer.getvalue())
-            st.rerun()
-            
+            roster_files = load_schedule()
             st.success("Perubahan Jadwal Petugas Misdinar Berhasil!")
-    
     else:
         st.write("Belum ada jadwal tugas misdinar yang dibuat.")
+    st.cache_data.clear()
 
 elif menu == "Update Data Misdinar":
     st.header("Update Data Misdinar")
