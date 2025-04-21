@@ -84,18 +84,14 @@ with st.sidebar:
 if menu == "Buat Jadwal Misdinar":
     st.header("Buat Jadwal Misdinar")
     
-    misa_options = {
-        "Jumat Pertama": 4,
-        "Sabtu Sore": 6,
-        "Minggu Pagi Pertama": 11,
-        "Minggu Sore Pertama": 11,
-        "Minggu Pagi Biasa": 8,
-        "Minggu Sore Biasa": 8,
-        "Jalan Salib": 3,
-        "Hari Raya": 11
+    slot_options = {
+        "4": 4,
+        "6": 6,
+        "8": 8,
+        "11": 11
     }
-    selected_misa = st.selectbox("Pilih Kategori Misa:", list(misa_options.keys()))
-    required_count = misa_options[selected_misa]
+    selected_slot = st.selectbox("Pilih Jumlah Kebutuhan Misdinar:", list(slot_options.keys()))
+    required_count = slot_options[selected_slot]
 
     # User input for roster date
     roster_date = st.date_input("Pilih Tanggal Misa:", format='DD/MM/YYYY')
@@ -105,7 +101,7 @@ if menu == "Buat Jadwal Misdinar":
     lingkungan_options.append('Lainnya')
     selected_lingkungan = st.selectbox("Pilih Petugas Koor:", lingkungan_options)
     
-    st.write(f"Kategori Misa: {selected_misa}, butuh {required_count} petugas Misdinar")
+    st.write(f"Kebutuhan:  {required_count} petugas Misdinar")
     st.write(f"Tanggal Misa: {formatted_date}")
     st.write(f"Petugas Koor: {selected_lingkungan}")
     
@@ -148,22 +144,23 @@ if menu == "Buat Jadwal Misdinar":
         selected_roster = priority_1
     
     # Select one Organist
-    df_organist = df[df["Peran"] == "Organis"].copy()
-    df_organist["Partisipasi"] = df_organist["Partisipasi"].fillna(0)
-    organist_priority = df_organist[df_organist["Lingkungan"] == selected_lingkungan].sort_values(by="Partisipasi")
-    if organist_priority.empty:
-        organist_priority = df_organist.sort_values(by="Partisipasi")
-    selected_organist = organist_priority.head(1)
+    # df_organist = df[df["Peran"] == "Organis"].copy()
+    # df_organist["Partisipasi"] = df_organist["Partisipasi"].fillna(0)
+    # organist_priority = df_organist[df_organist["Lingkungan"] == selected_lingkungan].sort_values(by="Partisipasi")
+    # if organist_priority.empty:
+    #     organist_priority = df_organist.sort_values(by="Partisipasi")
+    # selected_organist = organist_priority.head(1)
     
     # Combine roster
-    full_roster = pd.concat([selected_roster, selected_organist])
+    # full_roster = pd.concat([selected_roster, selected_organist])
+    full_roster = selected_roster
     
     st.write("### Petugas Misdinar:")
     st.dataframe(full_roster[["Nama", "Lingkungan", "Peran", "Notes"]], width=1000, hide_index=True)
 
     # Confirmation Button
     if st.button("Konfirmasi", type='primary'):
-        roster_text = f"Jadwal Misdinar - {selected_misa}\n{formatted_date}\n\nNama - Lingkungan\n"
+        roster_text = f"Jadwal Misdinar - {formatted_date}\n\nNama - Lingkungan\n"
         roster_text += "\n".join([f"{row['Nama']} - {row['Lingkungan']}" for _, row in full_roster.iterrows()])
         
         #Update Partisipasi column
@@ -175,7 +172,7 @@ if menu == "Buat Jadwal Misdinar":
         s3.put_object(Bucket=S3_BUCKET_NAME, Key="data.csv", Body=csv_buffer.getvalue())
 
         # Generate roster filename (e.g., "misdinar_SabtuSore_2025-03-08.csv")
-        roster_filename = f"misdinar_{selected_misa}_{formatted_date}.csv"
+        roster_filename = f"misdinar_{formatted_date}.csv"
 
         # Convert DataFrame to CSV for S3 upload
         roster_buffer = StringIO()
