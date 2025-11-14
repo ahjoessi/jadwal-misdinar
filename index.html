@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Misdinar Shift Scheduler</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { Calendar, Users, Plus, Edit2, Trash2, Copy, CheckCircle, UserPlus, Save, X } = lucide;
+
+        // Simple storage implementation for standalone version
+        window.storage = {
+            async get(key) {
+                const value = localStorage.getItem(key);
+                return value ? { key, value } : null;
+            },
+            async set(key, value) {
+                localStorage.setItem(key, value);
+                return { key, value };
+            },
+            async delete(key) {
+                localStorage.removeItem(key);
+                return { key, deleted: true };
+            }
+        };
+
+        const Icon = ({ icon: IconComponent, ...props }) => {
+            return React.createElement(IconComponent, props);
+        };
+
+        const ShiftScheduler = () => {
+            const [teamMembers, setTeamMembers] = useState([]);
+            const [shifts, setShifts] = useState([]);
+            const [activeTab, setActiveTab] = useState('schedule');
+            const [showAddMember, setShowAddMember] = useState(false);
+            const [showScheduleForm, setShowScheduleForm] = useState(false);
+            const [editingShift, setEditingShift] = useState(null);
+            const [copiedId, setCopiedId] = useState(null);
+
+            const [newMember, setNewMember] = useState({
+                nama: '', lingkungan: '', peran: 'Misdinar', notes: '', partisipasi: 0
+            });
+
+            const [scheduleForm, setScheduleForm] = useState({
+                date: '', time: '', location: '', membersNeeded: 4
+            });
+
+            const areas = ['Dengklok', 'Galuhmas', 'Grahayana', 'Grand Taruma', 'Kalang Suria 1', 
+                        'Kalang Suria 2', 'Karaba', 'Non-Marinus', 'Perumnas 1', 'Perumnas 2', 
+                        'Perumnas 3', 'Resinda 1', 'Resinda 2', 'Tanjung Pura'];
+
+            useEffect(() => {
+                loadData();
+            }, []);
+
+            const loadData = async () => {
+                try {
+                    const membersData = await window.storage.get('team_members');
+                    const shiftsData = await window.storage.get('shifts');
+                    
+                    if (membersData) {
+                        setTeamMembers(JSON.parse(membersData.value));
+                    } else {
+                        const initialMembers = [
+                            {id:0,nama:"Faustino",lingkungan:"Dengklok",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:1,nama:"Mikael",lingkungan:"Dengklok",peran:"Misdinar",notes:"Lambat",partisipasi:0},
+                            {id:2,nama:"Rafeil",lingkungan:"Dengklok",peran:"Misdinar",notes:"Lambat",partisipasi:0},
+                            {id:3,nama:"Mikael",lingkungan:"Galuhmas",peran:"Misdinar",notes:"Lambat",partisipasi:0},
+                            {id:4,nama:"Radit",lingkungan:"Galuhmas",peran:"Misdinar",notes:"Baru",partisipasi:0},
+                            {id:5,nama:"Samuel",lingkungan:"Galuhmas",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:6,nama:"Cheryl",lingkungan:"Grahayana",peran:"Misdinar",notes:"Baru",partisipasi:0},
+                            {id:7,nama:"Rose",lingkungan:"Grahayana",peran:"Misdinar",notes:"Baru",partisipasi:0},
+                            {id:8,nama:"Timoty",lingkungan:"Grahayana",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:9,nama:"Andrew",lingkungan:"Grand Taruma",peran:"Misdinar",notes:"Baru",partisipasi:0},
+                            {id:10,nama:"Celine",lingkungan:"Grand Taruma",peran:"Misdinar",notes:"Baru",partisipasi:0},
+                            {id:11,nama:"Erick",lingkungan:"Grand Taruma",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:12,nama:"Nico",lingkungan:"Grand Taruma",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:13,nama:"Regina",lingkungan:"Grand Taruma",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:14,nama:"Adrian",lingkungan:"Kalang Suria 1",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:15,nama:"Agnes",lingkungan:"Kalang Suria 1",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:16,nama:"Claudia",lingkungan:"Kalang Suria 1",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:17,nama:"Elisabeth",lingkungan:"Kalang Suria 1",peran:"Misdinar",notes:"Lambat",partisipasi:0},
+                            {id:18,nama:"Ferdi",lingkungan:"Kalang Suria 1",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:19,nama:"Frans",lingkungan:"Kalang Suria 1",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:20,nama:"Queen",lingkungan:"Kalang Suria 1",peran:"Misdinar",notes:"Baru",partisipasi:0},
+                            {id:21,nama:"Rehul",lingkungan:"Kalang Suria 1",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:22,nama:"Tere",lingkungan:"Kalang Suria 1",peran:"Misdinar",notes:"Baru",partisipasi:0},
+                            {id:23,nama:"Tika",lingkungan:"Kalang Suria 1",peran:"Misdinar",notes:"Baru",partisipasi:0},
+                            {id:24,nama:"Filipus",lingkungan:"Kalang Suria 2",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:25,nama:"Hotjond",lingkungan:"Kalang Suria 2",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:26,nama:"Immanuel",lingkungan:"Kalang Suria 2",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:27,nama:"Keysha",lingkungan:"Kalang Suria 2",peran:"Misdinar",notes:"Baru",partisipasi:0},
+                            {id:28,nama:"Rayhan",lingkungan:"Kalang Suria 2",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:29,nama:"Simson",lingkungan:"Kalang Suria 2",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:30,nama:"Yani",lingkungan:"Kalang Suria 2",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:31,nama:"Brenda",lingkungan:"Karaba",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:32,nama:"Dea",lingkungan:"Karaba",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:34,nama:"Ica",lingkungan:"Karaba",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:35,nama:"Kevin",lingkungan:"Karaba",peran:"Misdinar",notes:"Baru",partisipasi:0},
+                            {id:36,nama:"Kyoshi",lingkungan:"Karaba",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:37,nama:"Reyna",lingkungan:"Karaba",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:38,nama:"Stefanus",lingkungan:"Karaba",peran:"Misdinar",notes:"Lambat",partisipasi:0},
+                            {id:39,nama:"Ailleen",lingkungan:"Non-Marinus",peran:"Misdinar",notes:"Baru",partisipasi:0},
+                            {id:40,nama:"Bintang",lingkungan:"Non-Marinus",peran:"Misdinar",notes:"Baru",partisipasi:0},
+                            {id:41,nama:"Christian",lingkungan:"Non-Marinus",peran:"Misdinar",notes:"Baru",partisipasi:0},
+                            {id:42,nama:"Gisel",lingkungan:"Non-Marinus",peran:"Misdinar",notes:"Baru",partisipasi:0},
+                            {id:43,nama:"Vriel",lingkungan:"Non-Marinus",peran:"Misdinar",notes:"Baru",partisipasi:0},
+                            {id:44,nama:"Alis",lingkungan:"Perumnas 1",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:45,nama:"Andrew",lingkungan:"Perumnas 1",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:46,nama:"Anya",lingkungan:"Perumnas 1",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:47,nama:"Christabel",lingkungan:"Perumnas 1",peran:"Misdinar",notes:"Baru",partisipasi:0},
+                            {id:48,nama:"David",lingkungan:"Perumnas 1",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:49,nama:"Elisabeth",lingkungan:"Perumnas 1",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:50,nama:"Kenny",lingkungan:"Perumnas 1",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:51,nama:"Nando",lingkungan:"Perumnas 1",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:53,nama:"Brenda",lingkungan:"Perumnas 2",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:54,nama:"Carista",lingkungan:"Perumnas 2",peran:"Misdinar",notes:"Baru",partisipasi:0},
+                            {id:55,nama:"Datus",lingkungan:"Perumnas 2",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:56,nama:"Dylen",lingkungan:"Perumnas 2",peran:"Misdinar",notes:"Baru",partisipasi:0},
+                            {id:57,nama:"Galih",lingkungan:"Perumnas 2",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:59,nama:"Naito",lingkungan:"Perumnas 2",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:60,nama:"Rey",lingkungan:"Perumnas 2",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:61,nama:"Richard",lingkungan:"Perumnas 2",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:62,nama:"Tania",lingkungan:"Perumnas 2",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:64,nama:"Abigail",lingkungan:"Perumnas 3",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:65,nama:"Agnes",lingkungan:"Perumnas 3",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:66,nama:"Andra",lingkungan:"Perumnas 3",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:67,nama:"Gendis",lingkungan:"Perumnas 3",peran:"Misdinar",notes:"Baru",partisipasi:0},
+                            {id:69,nama:"Grace",lingkungan:"Perumnas 3",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:70,nama:"Kelvin",lingkungan:"Perumnas 3",peran:"Misdinar",notes:"Baru",partisipasi:0},
+                            {id:71,nama:"Rere",lingkungan:"Perumnas 3",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:72,nama:"Steven",lingkungan:"Perumnas 3",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:73,nama:"Teres",lingkungan:"Perumnas 3",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:74,nama:"Cello",lingkungan:"Resinda 1",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:75,nama:"Gerwin",lingkungan:"Resinda 1",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:76,nama:"Kiara",lingkungan:"Resinda 1",peran:"Misdinar",notes:"Baru",partisipasi:0},
+                            {id:77,nama:"Maura",lingkungan:"Resinda 1",peran:"Misdinar",notes:"Baru",partisipasi:0},
+                            {id:78,nama:"Michele",lingkungan:"Resinda 1",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:79,nama:"Nuell",lingkungan:"Resinda 1",peran:"Misdinar",notes:"Lambat",partisipasi:0},
+                            {id:80,nama:"Pibi",lingkungan:"Resinda 1",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:81,nama:"Prisil",lingkungan:"Resinda 1",peran:"Misdinar",notes:"Baru",partisipasi:0},
+                            {id:82,nama:"Adel",lingkungan:"Resinda 2",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:83,nama:"Amora",lingkungan:"Resinda 2",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:84,nama:"Cheril",lingkungan:"Resinda 2",peran:"Misdinar",notes:"Lambat",partisipasi:0},
+                            {id:85,nama:"Cyla",lingkungan:"Resinda 2",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:86,nama:"Denisha",lingkungan:"Resinda 2",peran:"Misdinar",notes:"Lambat",partisipasi:0},
+                            {id:87,nama:"Eben",lingkungan:"Resinda 2",peran:"Misdinar",notes:"Lambat",partisipasi:0},
+                            {id:88,nama:"Evan",lingkungan:"Resinda 2",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:89,nama:"Evelyn",lingkungan:"Resinda 2",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:90,nama:"Joseph",lingkungan:"Resinda 2",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:91,nama:"Kania",lingkungan:"Resinda 2",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:92,nama:"Karen",lingkungan:"Resinda 2",peran:"Misdinar",notes:"Baru",partisipasi:0},
+                            {id:93,nama:"Krisel",lingkungan:"Resinda 2",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:94,nama:"Livia",lingkungan:"Resinda 2",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:95,nama:"Marsha",lingkungan:"Resinda 2",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:96,nama:"Sisil",lingkungan:"Resinda 2",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:97,nama:"Dimitri",lingkungan:"Tanjung Pura",peran:"Misdinar",notes:"",partisipasi:0},
+                            {id:98,nama:"Lintang",lingkungan:"Tanjung Pura",peran:"Misdinar",notes:"",partisipasi:0}
+                        ];
+                        setTeamMembers(initialMembers);
+                        await window.storage.set('team_members', JSON.stringify(initialMembers));
+                    }
+                    
+                    if (shiftsData) {
+                        setShifts(JSON.parse(shiftsData.value));
+                    }
+                } catch (error) {
+                    console.error('Error loading data:', error);
+                }
+            };
+
+            const saveTeamMembers = async (members) => {
+                await window.storage.set('team_members', JSON.stringify(members));
+                setTeamMembers(members);
+            };
+
+            const saveShifts = async (newShifts) => {
+                await window.storage.set('shifts', JSON.stringify(newShifts));
+                setShifts(newShifts);
+            };
+
+            const selectTeamMembers = (location, count) => {
+                const sameArea = teamMembers.filter(m => m.lingkungan === location);
+                const otherArea = teamMembers.filter(m => m.lingkungan !== location);
+                
+                const experienced = [...sameArea, ...otherArea].filter(m => !m.notes || (m.notes !== 'Lambat' && m.notes !== 'Baru'));
+                const inexperienced = [...sameArea, ...otherArea].filter(m => m.notes === 'Lambat' || m.notes === 'Baru');
+                
+                experienced.sort((a, b) => a.partisipasi - b.partisipasi);
+                inexperienced.sort((a, b) => a.partisipasi - b.partisipasi);
+                
+                const maxInexperienced = Math.floor(count * 0.3);
+                const selected = [];
+                
+                const sameAreaExp = experienced.filter(m => m.lingkungan === location);
+                selected.push(...sameAreaExp.slice(0, Math.min(count, sameAreaExp.length)));
+                
+                if (selected.length < count) {
+                    const otherExp = experienced.filter(m => m.lingkungan !== location);
+                    selected.push(...otherExp.slice(0, count - selected.length));
+                }
+                
+                if (selected.length < count) {
+                    const remaining = count - selected.length;
+                    const canAddInexp = Math.min(remaining, maxInexperienced);
+                    selected.push(...inexperienced.slice(0, canAddInexp));
+                }
+                
+                return selected.slice(0, count);
+            };
+
+            const handleCreateSchedule = async () => {
+                const selectedMembers = selectTeamMembers(scheduleForm.location, parseInt(scheduleForm.membersNeeded));
+                
+                const newShift = {
+                    id: Date.now(),
+                    date: scheduleForm.date,
+                    time: scheduleForm.time,
+                    location: scheduleForm.location,
+                    members: selectedMembers.map(m => m.id)
+                };
+                
+                const updatedMembers = teamMembers.map(m => {
+                    if (selectedMembers.find(sm => sm.id === m.id)) {
+                        return { ...m, partisipasi: m.partisipasi + 1 };
+                    }
+                    return m;
+                });
+                
+                await saveTeamMembers(updatedMembers);
+                await saveShifts([...shifts, newShift]);
+                
+                setScheduleForm({ date: '', time: '', location: '', membersNeeded: 4 });
+                setShowScheduleForm(false);
+            };
+
+            const handleAddMember = async () => {
+                const newId = Math.max(...teamMembers.map(m => m.id), 0) + 1;
+                const member = { ...newMember, id: newId };
+                await saveTeamMembers([...teamMembers, member]);
+                setNewMember({ nama: '', lingkungan: '', peran: 'Misdinar', notes: '', partisipasi: 0 });
+                setShowAddMember(false);
+            };
+
+            const handleDeleteMember = async (id) => {
+                if (confirm('Yakin ingin menghapus anggota ini?')) {
+                    await saveTeamMembers(teamMembers.filter(m => m.id !== id));
+                }
+            };
+
+            const handleDeleteShift = async (id) => {
+                if (confirm('Yakin ingin menghapus jadwal ini?')) {
+                    const shift = shifts.find(s => s.id === id);
+                    const updatedMembers = teamMembers.map(m => {
+                        if (shift.members.includes(m.id)) {
+                            return { ...m, partisipasi: Math.max(0, m.partisipasi - 1) };
+                        }
+                        return m;
+                    });
+                    await saveTeamMembers(updatedMembers);
+                    await saveShifts(shifts.filter(s => s.id !== id));
+                }
+            };
+
+            const handleUpdateShiftMembers = async (shiftId, newMemberIds) => {
+                const shift = shifts.find(s => s.id === shiftId);
+                const oldMemberIds = shift.members;
+                
+                const updatedMembers = teamMembers.map(m => {
+                    let newPart = m.partisipasi;
+                    if (oldMemberIds.includes(m.id) && !newMemberIds.includes(m.id)) {
+                        newPart = Math.max(0, m.partisipasi - 1);
+                    }
+                    if (!oldMemberIds.includes(m.id) && newMemberIds.includes(m.id)) {
+                        newPart = m.partisipasi + 1;
+                    }
+                    return { ...m, partisipasi: newPart };
+                });
+                
+                await saveTeamMembers(updatedMembers);
+                
+                const updatedShifts = shifts.map(s => 
+                    s.id === shiftId ? { ...s, members: newMemberIds } : s
+                );
+                await saveShifts(updatedShifts);
+                setEditingShift(null);
+            };
+
+            const generateMessage = (shift) => {
+                const members = shift.members.map(id => teamMembers.find(m => m.id === id));
+                const memberNames = members.map(m => `• ${m.nama}`).join('\n');
+                
+                return `📅 *Jadwal Misdinar*\n\nTanggal: ${shift.date}\nWaktu: ${shift.time}\nLokasi: ${shift.location}\n\nTim yang bertugas:\n${memberNames}\n\nMohon konfirmasi kehadiran. Terima kasih! 🙏`;
+            };
+
+            const copyToClipboard = async (shift) => {
+                const message = generateMessage(shift);
+                await navigator.clipboard.writeText(message);
+                setCopiedId(shift.id);
+                setTimeout(() => setCopiedId(null), 2000);
+            };
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+                    <div className="max-w-md mx-auto bg-white min-h-screen shadow-xl">
+                        <div className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white p-6">
+                            <h1 className="text-2xl font-bold flex items-center gap-2">
+                                <Icon icon={Calendar} className="w-7 h-7" />
+                                Misdinar Scheduler
+                            </h1>
+                            <p className="text-indigo-100 text-sm mt-1">Kelola jadwal shift dengan mudah</p>
+                        </div>
+
+                        <div className="flex border-b bg-white sticky top-0 z-10">
+                            <button
+                                onClick={() => setActiveTab('schedule')}
+                                className={`flex-1 py-3 text-sm font-medium ${activeTab === 'schedule' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-600'}`}
+                            >
+                                Jadwal
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('members')}
+                                className={`flex-1 py-3 text-sm font-medium ${activeTab === 'members' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-600'}`}
+                            >
+                                Anggota Tim
+                            </button>
+                        </div>
+
+                        <div className="p-4 pb-20">
+                            {activeTab === 'schedule' && (
+                                <div className="space-y-4">
+                                    {shifts.length === 0 ? (
+                                        <div className="text-center py-12 text-gray-500">
+                                            <Icon icon={Calendar} className="w-16 h-16 mx-auto mb-4 opacity-30" />
+                                            <p>Belum ada jadwal shift</p>
+                                            <p className="text-sm">Buat jadwal baru untuk memulai</p>
+                                        </div>
+                                    ) : (
+                                        shifts.sort((a, b) => new Date(a.date + ' ' + a.time) - new Date(b.date + ' ' + b.time)).map(shift => {
+                                            const members = shift.members.map(id => teamMembers.find(m => m.id === id)).filter(Boolean);
+                                            
+                                            return (
+                                                <div key={shift.id} className="bg-white border rounded-lg p-4 shadow-sm">
+                                                    <div className="flex justify-between items-start mb-3">
+                                                        <div>
+                                                            <div className="font-semibold text-gray-900">{shift.date}</div>
+                                                            <div className="text-sm text-gray-600">{shift.time} • {shift.location}</div>
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            <button onClick={() => copyToClipboard(shift)} className="p-2 text-green-600 hover:bg-green-50 rounded">
+                                                                <Icon icon={copiedId === shift.id ? CheckCircle : Copy} className="w-4 h-4" />
+                                                            </button>
+                                                            <button onClick={() => setEditingShift(shift)} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded">
+                                                                <Icon icon={Edit2} className="w-4 h-4" />
+                                                            </button>
+                                                            <button onClick={() => handleDeleteShift(shift.id)} className="p-2 text-red-600 hover:bg-red-50 rounded">
+                                                                <Icon icon={Trash2} className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    {editingShift && editingShift.id === shift.id ? (
+                                                        <div className="space-y-2">
+                                                            <div className="text-sm font-medium text-gray-700">Pilih Anggota:</div>
+                                                            <div className="max-h-48 overflow-y-auto space-y-2">
+                                                                {teamMembers.map(member => (
+                                                                    <label key={member.id} className="flex items-center gap-2 text-sm">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={editingShift.members.includes(member.id)}
+                                                                            onChange={(e) => {
+                                                                                const newMembers = e.target.checked
+                                                                                    ? [...editingShift.members, member.id]
+                                                                                    : editingShift.members.filter(id => id !== member.id);
+                                                                                setEditingShift({ ...editingShift, members: newMembers });
+                                                                            }}
+                                                                            className="rounded"
+                                                                        />
+                                                                        <span>{member.nama} ({member.lingkungan})</span>
+                                                                    </label>
+                                                                ))}
+                                                            </div>
+                                                            <div className="flex gap-2 mt-3">
+                                                                <button
+                                                                    onClick={() => handleUpdateShiftMembers(shift.id, editingShift.members)}
+                                                                    className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-1"
+                                                                >
+                                                                    <Icon icon={Save} className="w-4 h-4" />
+                                                                    Simpan
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => setEditingShift(null)}
+                                                                    className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-medium"
+                                                                >
+                                                                    Batal
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="space-y-1">
+                                                            {members.map(member => (
+                                                                <div key={member.id} className="text-sm text-gray-700 flex items-center gap-2">
+                                                                    <Icon icon={Users} className="w-3 h-3" />
+                                                                    {member.nama}
+                                                                    {member.notes && (
+                                                                        <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded">
+                                                                            {member.notes}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            )}
+
+                            {activeTab === 'members' && (
+                                <div className="space-y-4">
+                                    <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg p-4 border border-indigo-100">
+                                        <div className="text-sm font-medium text-gray-700">Total Anggota</div>
+                                        <div className="text-3xl font-bold text-indigo-600">{teamMembers.length}</div>
+                                    </div>
+
+                                    {areas.map(area => {
+                                        const members = teamMembers.filter(m => m.lingkungan === area);
+                                        if (members.length === 0) return null;
+                                        
+                                        return (
+                                            <div key={area} className="bg-white border rounded-lg overflow-hidden">
+                                                <div className="bg-gray-50 px-4 py-2 border-b">
+                                                    <div className="font-semibold text-gray-900">{area}</div>
+                                                    <div className="text-xs text-gray-600">{members.length} anggota</div>
+                                                </div>
+                                                <div className="divide-y">
+                                                    {members.map(member => (
+                                                        <div key={member.id} className="p-3 flex justify-between items-center hover:bg-gray-50">
+                                                            <div className="flex-1">
+                                                                <div className="font-medium text-gray-900">{member.nama}</div>
+                                                                <div className="text-xs text-gray-600 flex items-center gap-2">
+                                                                    <span>Partisipasi: {member.partisipasi}x</span>
+                                                                    {member.notes && (
+                                                                        <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded">
+                                                                            {member.notes}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            <button
+                                                                onClick={() => handleDeleteMember(member.id)}
+                                                                className="p-2 text-red-600 hover:bg-red-50 rounded"
+                                                            >
+                                                                <Icon icon={Trash2} className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+
+                        {activeTab === 'schedule' && !showScheduleForm && (
+                            <button
+                                onClick={() => setShowScheduleForm(true)}
+                                className="fixed bottom-6 right-6 bg-indigo-600 text-white p-4 rounded-full shadow-lg hover:bg-indigo-700 transition-colors"
+                            >
+                                <Icon icon={Plus} className="w-6 h-6" />
+                            </button>
+                        )}
+
+                        {activeTab === 'members' && !showAddMember && (
+                            <button
+                                onClick={() => setShowAddMember(true)}
+                                className="fixed bottom-6 right-6 bg-indigo-600 text-white p-4 rounded-full shadow-lg hover:bg-indigo-700 transition-colors"
+                            >
+                                <Icon icon={UserPlus} className="w-6 h-6" />
+                            </button>
+                        )}
+
+                        {showScheduleForm && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end z-50">
+                                <div className="bg-white w-full rounded-t-2xl p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h2 className="text-xl font-bold text-gray-900">Buat Jadwal Baru</h2>
+                                        <button onClick={() => setShowScheduleForm(false)} className="p-2 hover:bg-gray-100 rounded">
+                                            <Icon icon={X} className="w-5 h-5" />
+                                        </button>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
+                                        <input
+                                            type="date"
+                                            value={scheduleForm.date}
+                                            onChange={(e) => setScheduleForm({ ...scheduleForm, date: e.target.value })}
+                                            className="w-full border rounded-lg px-3 py-2"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Waktu</label>
+                                        <input
+                                            type="time"
+                                            value={scheduleForm.time}
+                                            onChange={(e) => setScheduleForm({ ...scheduleForm, time: e.target.value })}
+                                            className="w-full border rounded-lg px-3 py-2"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Lokasi</label>
+                                        <select
+                                            value={scheduleForm.location}
+                                            onChange={(e) => setScheduleForm({ ...scheduleForm, location: e.target.value })}
+                                            className="w-full border rounded-lg px-3 py-2"
+                                        >
+                                            <option value="">Pilih Lokasi</option>
+                                            {areas.map(area => (
+                                                <option key={area} value={area}>{area}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Jumlah Anggota</label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            max="20"
+                                            value={scheduleForm.membersNeeded}
+                                            onChange={(e) => setScheduleForm({ ...scheduleForm, membersNeeded: e.target.value })}
+                                            className="w-full border rounded-lg px-3 py-2"
+                                        />
+                                    </div>
+
+                                    <button
+                                        onClick={handleCreateSchedule}
+                                        disabled={!scheduleForm.date || !scheduleForm.time || !scheduleForm.location}
+                                        className="w-full bg-indigo-600 text-white py-3 rounded-lg font-medium disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                    >
+                                        Buat Jadwal
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {showAddMember && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end z-50">
+                                <div className="bg-white w-full rounded-t-2xl p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h2 className="text-xl font-bold text-gray-900">Tambah Anggota Baru</h2>
+                                        <button onClick={() => setShowAddMember(false)} className="p-2 hover:bg-gray-100 rounded">
+                                            <Icon icon={X} className="w-5 h-5" />
+                                        </button>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Nama</label>
+                                        <input
+                                            type="text"
+                                            value={newMember.nama}
+                                            onChange={(e) => setNewMember({ ...newMember, nama: e.target.value })}
+                                            className="w-full border rounded-lg px-3 py-2"
+                                            placeholder="Masukkan nama"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Lingkungan</label>
+                                        <select
+                                            value={newMember.lingkungan}
+                                            onChange={(e) => setNewMember({ ...newMember, lingkungan: e.target.value })}
+                                            className="w-full border rounded-lg px-3 py-2"
+                                        >
+                                            <option value="">Pilih Lingkungan</option>
+                                            {areas.map(area => (
+                                                <option key={area} value={area}>{area}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Catatan</label>
+                                        <select
+                                            value={newMember.notes}
+                                            onChange={(e) => setNewMember({ ...newMember, notes: e.target.value })}
+                                            className="w-full border rounded-lg px-3 py-2"
+                                        >
+                                            <option value="">Tidak ada</option>
+                                            <option value="Baru">Baru</option>
+                                            <option value="Lambat">Lambat</option>
+                                        </select>
+                                    </div>
+
+                                    <button
+                                        onClick={handleAddMember}
+                                        disabled={!newMember.nama || !newMember.lingkungan}
+                                        className="w-full bg-indigo-600 text-white py-3 rounded-lg font-medium disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                    >
+                                        Tambah Anggota
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<ShiftScheduler />, document.getElementById('root'));
+    </script>
+</body>
+</html>
